@@ -1,0 +1,133 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Compute lowercase image repo
+        shell: bash
+        run: |
+          set -euo pipefail
+          REPO_LC="$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')"
+          echo "IMAGE_REPO=ghcr.io/${REPO_LC}" >> "$GITHUB_ENV"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ secrets.GHCR_USERNAME }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_REPO }}
+          tags: |
+            type=raw,value=main
+            type=sha,prefix=sha-,format=long
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Compute IMAGE
+        run: |
+          set -euo pipefail
+          REPO_LC="$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')"
+          echo "IMAGE=ghcr.io/${REPO_LC}:sha-${GITHUB_SHA}" >> "$GITHUB_ENV"
+
+      - name: Show image
+        run: echo "Deploying $IMAGE"
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            deploy/docker-compose.prod.yml
+            deploy/Caddyfile
+          sparse-checkout-cone-mode: false
+
+      - name: SCP files to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          passphrase: ${{ secrets.SSH_KEY_PASSPHRASE }}
+          source: "deploy/docker-compose.prod.yml,deploy/Caddyfile"
+          target: /docker/services/matrix
+          strip_components: 1
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        env:
+          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          passphrase: ${{ secrets.SSH_KEY_PASSPHRASE }}
+          envs: GHCR_USERNAME,GHCR_TOKEN,IMAGE,DOMAIN
+          script: |
+            set -e
+            
+            cd /docker/services/matrix
+            
+            # Login to GHCR on VPS
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
+            
+            # Sanity check files exist
+            echo "=== Files in /docker/services/matrix ==="
+            ls -la
+            
+            echo "=== Checking required files ==="
+            test -f docker-compose.prod.yml || { echo "ERROR: docker-compose.prod.yml missing"; exit 1; }
+            test -f Caddyfile || { echo "ERROR: Caddyfile missing"; exit 1; }
+            echo "All files present"
+            
+            # Create .env file
+            echo "IMAGE=$IMAGE" > .env
+            echo "DOMAIN=${{ secrets.DOMAIN }}" >> .env
+            
+            # Create networks if not exist
+            docker network create proxy 2>/dev/null || true
+            docker network create app 2>/dev/null || true
+            
+            # Pull and deploy
+            docker compose --env-file .env -f docker-compose.prod.yml pull
+            docker compose --env-file .env -f docker-compose.prod.yml up -d
+            
+            # Prune old images
+            docker image prune -f --filter "until=24h" || true
+            
+            echo "=== Deployment complete ==="
+            docker compose --env-file .env -f docker-compose.prod.yml ps

@@ -1,0 +1,20 @@
+services:
+  matrix-blog:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    ports:
+      - "8080:8080"
+    environment:
+      - RUST_LOG=warn,matrix_blog=info
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  default:
+    name: matrix-network

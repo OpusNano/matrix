@@ -1,0 +1,39 @@
+services:
+  matrix-blog:
+    image: ${IMAGE:-ghcr.io/owner/matrix:main}
+    container_name: matrix-blog
+    restart: unless-stopped
+    environment:
+      - RUST_LOG=warn,matrix_blog=info
+      - RUST_BASE_URL=${DOMAIN}
+    networks:
+      - app
+    ports:
+      - "127.0.0.1:8654:8080"
+    volumes:
+      - ./logs:/app/logs
+    user: "1000:1000"
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy-proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - proxy
+      - app
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - /docker/services/matrix/certs:/etc/caddy/certs:ro
+      - ./data:/data
+      - ./config:/config
+
+networks:
+  proxy:
+    external: true
+    name: proxy
+  app:
+    external: true
+    name: app

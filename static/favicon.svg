@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <defs>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1.6" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <pattern id="scan" width="4" pattern="4" heightUnits="userSpaceOnUse">
+      <rect width="4" height="4" fill="transparent"/>
+      <rect y="3" width="4" height="1" fill="#00ff66" opacity="0.10"/>
+    </pattern>
+    <pattern id="dots" width="3" height="3" patternUnits="userSpaceOnUse">
+      <circle cx="0.7" cy="0.7" r="0.35" fill="#00ff66" opacity="0.10"/>
+      <circle cx="2.2" cy="2.0" r="0.35" fill="#00ff66" opacity="0.08"/>
+    </pattern>
+    <linearGradient id="matrixGreen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7CFF9B"/>
+      <stop offset="0.45" stop-color="#00FF66"/>
+      <stop offset="1" stop-color="#00B84A"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" fill="transparent"/>
+  <g filter="url(#glow)">
+    <path
+      d="M12 52 V14 H20 L32 30 L44 14 H52 V52 H44 V28 L32 42 L20 28 V52 Z"
+      fill="url(#matrixGreen)"
+    />
+    <clipPath id="clipM">
+      <path d="M12 52 V14 H20 L32 30 L44 14 H52 V52 H44 V28 L32 42 L20 28 V52 Z"/>
+    </clipPath>
+    <g clip-path="url(#clipM)">
+      <rect width="64" height="64" fill="url(#scan)"/>
+      <rect width="64" height="64" fill="url(#dots)"/>
+    </g>
+  </g>
+</svg>

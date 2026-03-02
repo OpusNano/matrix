@@ -1,0 +1,14 @@
+# Matrix Blog - uses Cloudflare Origin Cert
+your-domain.com {
+    tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin.key
+    
+    reverse_proxy matrix-blog:8080 {
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+    
+    handle /health {
+        respond "OK" 200
+    }
+}

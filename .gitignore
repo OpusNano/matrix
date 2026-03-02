@@ -1,0 +1,7 @@
+/target/
+/server/target/
+*.swp
+*.swo
+.DS_Store
+.env
+*.log

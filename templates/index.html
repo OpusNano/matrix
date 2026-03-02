@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Matrix Blog - Home{% endblock %}
+{% block description %}Latest posts from Matrix Blog{% endblock %}
+
+{% block content %}
+<div class="container">
+    <section class="posts-section">
+        <h1 class="page-title">Latest Posts</h1>
+        
+        {% if posts.is_empty() %}
+        <p class="no-posts">No posts yet. Add a .md file to content/posts/</p>
+        {% else %}
+        <ul class="post-list">
+            {% for post in posts %}
+            <li class="post-item">
+                <article class="post-preview">
+                    <h2 class="post-title">
+                        <a href="/posts/{{ post.slug }}">{{ post.frontmatter.title }}</a>
+                    </h2>
+                    <time class="post-date" datetime="{{ post.frontmatter.date }}">{{ post.frontmatter.date.format("%Y-%m-%d") }}</time>
+                    {% if !post.frontmatter.tags.is_empty() %}
+                    <ul class="post-tags">
+                        {% for tag in post.frontmatter.tags %}
+                        <li class="tag">{{ tag }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                    {% if post.frontmatter.description.is_some() %}
+                    <p class="post-description">{{ post.frontmatter.description.as_ref().unwrap() }}</p>
+                    {% endif %}
+                </article>
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

@@ -1,8 +1,8 @@
-use crate::content::{Post, Page};
+use crate::content::{Page, Post};
 
 fn get_base_url() -> String {
     std::env::var("RUST_BASE_URL")
-        .map(|url| format!("https://{}", url))
+        .map(|url| format!("https://{url}"))
         .unwrap_or_else(|_| "https://example.com".to_string())
 }
 
@@ -12,17 +12,28 @@ pub fn render_index(posts: &[Post]) -> String {
     html.push_str("<html lang=\"en\">\n");
     html.push_str("<head>\n");
     html.push_str("    <meta charset=\"UTF-8\">\n");
-    html.push_str("    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n");
+    html.push_str(
+        "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n",
+    );
     html.push_str("    <meta name=\"description\" content=\"Matrix Blog - Latest posts\">\n");
     html.push_str("    <title>Matrix Blog - Home</title>\n");
-    html.push_str(&format!("    <link rel=\"canonical\" href=\"{}/\"/>\n", get_base_url()));
+    let base_url = get_base_url();
+    html.push_str(&format!(
+        "    <link rel=\"canonical\" href=\"{base_url}/\"/>\n",
+    ));
     html.push_str("    <meta property=\"og:type\" content=\"website\">\n");
-    html.push_str(&format!("    <meta property=\"og:url\" content=\"{}/\"/>\n", get_base_url()));
+    html.push_str(&format!(
+        "    <meta property=\"og:url\" content=\"{base_url}/\"/>\n",
+    ));
     html.push_str("    <meta property=\"og:title\" content=\"Matrix Blog - Home\">\n");
-    html.push_str("    <meta property=\"og:description\" content=\"Matrix Blog - Latest posts\">\n");
+    html.push_str(
+        "    <meta property=\"og:description\" content=\"Matrix Blog - Latest posts\">\n",
+    );
     html.push_str("    <meta name=\"twitter:card\" content=\"summary\">\n");
     html.push_str("    <meta name=\"twitter:title\" content=\"Matrix Blog - Home\">\n");
-    html.push_str("    <meta name=\"twitter:description\" content=\"Matrix Blog - Latest posts\">\n");
+    html.push_str(
+        "    <meta name=\"twitter:description\" content=\"Matrix Blog - Latest posts\">\n",
+    );
     html.push_str("    <link rel=\"alternate\" type=\"application/atom+xml\" title=\"Matrix Blog RSS Feed\" href=\"/feed.xml\">\n");
     html.push_str("    <link rel=\"icon\" type=\"image/svg+xml\" href=\"/static/favicon.svg\">\n");
     html.push_str("    <link rel=\"stylesheet\" href=\"/static/css/style.css\">\n");
@@ -32,7 +43,9 @@ pub fn render_index(posts: &[Post]) -> String {
     html.push_str("    <a href=\"#main-content\" class=\"skip-link\">Skip to content</a>\n");
     html.push_str("    \n");
     html.push_str("    <header class=\"site-header\">\n");
-    html.push_str("        <nav class=\"site-nav\" role=\"navigation\" aria-label=\"Main navigation\">\n");
+    html.push_str(
+        "        <nav class=\"site-nav\" role=\"navigation\" aria-label=\"Main navigation\">\n",
+    );
     html.push_str("            <a href=\"/\" class=\"site-logo\">Matrix</a>\n");
     html.push_str("            <ul class=\"nav-links\">\n");
     html.push_str("                <li><a href=\"/\">Home</a></li>\n");
@@ -56,11 +69,11 @@ pub fn render_index(posts: &[Post]) -> String {
             .frontmatter
             .tags
             .iter()
-            .map(|t| format!("<a href=\"/tags/{}\" class=\"tag\">{}</a>", t, t))
+            .map(|t| format!("<a href=\"/tags/{t}\" class=\"tag\">{t}</a>"))
             .collect();
 
         let meta_html = if post.frontmatter.tags.is_empty() {
-            format!("<span class=\"post-meta\">{}</span>", date)
+            format!("<span class=\"post-meta\">{date}</span>")
         } else {
             format!(
                 "<span class=\"post-meta\">{} &middot; {}</span>",
@@ -73,7 +86,7 @@ pub fn render_index(posts: &[Post]) -> String {
             .frontmatter
             .description
             .as_ref()
-            .map(|d| format!("<p class=\"post-description\">{}</p>", d))
+            .map(|d| format!("<p class=\"post-description\">{d}</p>"))
             .unwrap_or_default();
 
         html.push_str(&format!(
@@ -111,7 +124,7 @@ pub fn render_post(post: &Post) -> String {
         .frontmatter
         .tags
         .iter()
-        .map(|t| format!("<a href=\"/tags/{}\" class=\"tag\">{}</a>", t, t))
+        .map(|t| format!("<a href=\"/tags/{t}\" class=\"tag\">{t}</a>"))
         .collect();
 
     let description = post.frontmatter.description.as_deref().unwrap_or("");
@@ -122,21 +135,44 @@ pub fn render_post(post: &Post) -> String {
     html.push_str("<html lang=\"en\">\n");
     html.push_str("<head>\n");
     html.push_str("    <meta charset=\"UTF-8\">\n");
-    html.push_str("    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n");
-    html.push_str(&format!("    <meta name=\"description\" content=\"{}\">\n", description));
-    html.push_str(&format!("    <title>{} - Matrix Blog</title>\n", post.frontmatter.title));
-    html.push_str(&format!("    <link rel=\"canonical\" href=\"{}\">\n", canonical));
+    html.push_str(
+        "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n",
+    );
+    html.push_str(&format!(
+        "    <meta name=\"description\" content=\"{description}\">\n",
+    ));
+    html.push_str(&format!(
+        "    <title>{} - Matrix Blog</title>\n",
+        post.frontmatter.title
+    ));
+    html.push_str(&format!(
+        "    <link rel=\"canonical\" href=\"{canonical}\">\n",
+    ));
     html.push_str("    <meta property=\"og:type\" content=\"article\">\n");
-    html.push_str(&format!("    <meta property=\"og:url\" content=\"{}\">\n", canonical));
-    html.push_str(&format!("    <meta property=\"og:title\" content=\"{}\">\n", post.frontmatter.title));
-    html.push_str(&format!("    <meta property=\"og:description\" content=\"{}\">\n", description));
+    html.push_str(&format!(
+        "    <meta property=\"og:url\" content=\"{canonical}\">\n",
+    ));
+    html.push_str(&format!(
+        "    <meta property=\"og:title\" content=\"{}\">\n",
+        post.frontmatter.title
+    ));
+    html.push_str(&format!(
+        "    <meta property=\"og:description\" content=\"{description}\">\n",
+    ));
     html.push_str("    <meta name=\"twitter:card\" content=\"summary\">\n");
-    html.push_str(&format!("    <meta name=\"twitter:title\" content=\"{}\">\n", post.frontmatter.title));
-    html.push_str(&format!("    <meta name=\"twitter:description\" content=\"{}\">\n", description));
+    html.push_str(&format!(
+        "    <meta name=\"twitter:title\" content=\"{}\">\n",
+        post.frontmatter.title
+    ));
+    html.push_str(&format!(
+        "    <meta name=\"twitter:description\" content=\"{description}\">\n",
+    ));
     if !post.frontmatter.tags.is_empty() {
         html.push_str(&format!(
             "    <meta property=\"article:tag\" content=\"{}\">\n",
-            post.frontmatter.tags.join("\">\n    <meta property=\"article:tag\" content=\"")
+            post.frontmatter
+                .tags
+                .join("\">\n    <meta property=\"article:tag\" content=\"")
         ));
     }
     html.push_str(&format!(
@@ -152,7 +188,9 @@ pub fn render_post(post: &Post) -> String {
     html.push_str("    <a href=\"#main-content\" class=\"skip-link\">Skip to content</a>\n");
     html.push_str("    \n");
     html.push_str("    <header class=\"site-header\">\n");
-    html.push_str("        <nav class=\"site-nav\" role=\"navigation\" aria-label=\"Main navigation\">\n");
+    html.push_str(
+        "        <nav class=\"site-nav\" role=\"navigation\" aria-label=\"Main navigation\">\n",
+    );
     html.push_str("            <a href=\"/\" class=\"site-logo\">Matrix</a>\n");
     html.push_str("            <ul class=\"nav-links\">\n");
     html.push_str("                <li><a href=\"/\">Home</a></li>\n");
@@ -171,12 +209,13 @@ pub fn render_post(post: &Post) -> String {
     ));
     if !tags_html.is_empty() {
         html.push_str(&format!(
-            "                <span class=\"post-meta\">{} &middot; {}</span>\n",
-            date,
+            "                <span class=\"post-meta\">{date} &middot; {}</span>\n",
             tags_html.join(", ")
         ));
     } else {
-        html.push_str(&format!("                <span class=\"post-meta\">{}</span>\n", date));
+        html.push_str(&format!(
+            "                <span class=\"post-meta\">{date}</span>\n",
+        ));
     }
     html.push_str("            </header>\n");
     html.push_str("            \n");
@@ -208,17 +247,38 @@ pub fn render_page(page: &Page) -> String {
     html.push_str("<html lang=\"en\">\n");
     html.push_str("<head>\n");
     html.push_str("    <meta charset=\"UTF-8\">\n");
-    html.push_str("    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n");
-    html.push_str(&format!("    <meta name=\"description\" content=\"{}\">\n", description));
-    html.push_str(&format!("    <title>{} - Matrix Blog</title>\n", page.frontmatter.title));
-    html.push_str(&format!("    <link rel=\"canonical\" href=\"{}\">\n", canonical));
+    html.push_str(
+        "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n",
+    );
+    html.push_str(&format!(
+        "    <meta name=\"description\" content=\"{description}\">\n",
+    ));
+    html.push_str(&format!(
+        "    <title>{} - Matrix Blog</title>\n",
+        page.frontmatter.title
+    ));
+    html.push_str(&format!(
+        "    <link rel=\"canonical\" href=\"{canonical}\">\n",
+    ));
     html.push_str("    <meta property=\"og:type\" content=\"website\">\n");
-    html.push_str(&format!("    <meta property=\"og:url\" content=\"{}\">\n", canonical));
-    html.push_str(&format!("    <meta property=\"og:title\" content=\"{}\">\n", page.frontmatter.title));
-    html.push_str(&format!("    <meta property=\"og:description\" content=\"{}\">\n", description));
+    html.push_str(&format!(
+        "    <meta property=\"og:url\" content=\"{canonical}\">\n",
+    ));
+    html.push_str(&format!(
+        "    <meta property=\"og:title\" content=\"{}\">\n",
+        page.frontmatter.title
+    ));
+    html.push_str(&format!(
+        "    <meta property=\"og:description\" content=\"{description}\">\n",
+    ));
     html.push_str("    <meta name=\"twitter:card\" content=\"summary\">\n");
-    html.push_str(&format!("    <meta name=\"twitter:title\" content=\"{}\">\n", page.frontmatter.title));
-    html.push_str(&format!("    <meta name=\"twitter:description\" content=\"{}\">\n", description));
+    html.push_str(&format!(
+        "    <meta name=\"twitter:title\" content=\"{}\">\n",
+        page.frontmatter.title
+    ));
+    html.push_str(&format!(
+        "    <meta name=\"twitter:description\" content=\"{description}\">\n",
+    ));
     html.push_str("    <link rel=\"alternate\" type=\"application/atom+xml\" title=\"Matrix Blog RSS Feed\" href=\"/feed.xml\">\n");
     html.push_str("    <link rel=\"icon\" type=\"image/svg+xml\" href=\"/static/favicon.svg\">\n");
     html.push_str("    <link rel=\"stylesheet\" href=\"/static/css/style.css\">\n");
@@ -228,7 +288,9 @@ pub fn render_page(page: &Page) -> String {
     html.push_str("    <a href=\"#main-content\" class=\"skip-link\">Skip to content</a>\n");
     html.push_str("    \n");
     html.push_str("    <header class=\"site-header\">\n");
-    html.push_str("        <nav class=\"site-nav\" role=\"navigation\" aria-label=\"Main navigation\">\n");
+    html.push_str(
+        "        <nav class=\"site-nav\" role=\"navigation\" aria-label=\"Main navigation\">\n",
+    );
     html.push_str("            <a href=\"/\" class=\"site-logo\">Matrix</a>\n");
     html.push_str("            <ul class=\"nav-links\">\n");
     html.push_str("                <li><a href=\"/\">Home</a></li>\n");
@@ -272,12 +334,19 @@ pub fn render_tags_index(tags: &[(String, usize)]) -> String {
     html.push_str("<html lang=\"en\">\n");
     html.push_str("<head>\n");
     html.push_str("    <meta charset=\"UTF-8\">\n");
-    html.push_str("    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n");
+    html.push_str(
+        "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n",
+    );
     html.push_str("    <meta name=\"description\" content=\"All tags on Matrix Blog\">\n");
     html.push_str("    <title>Tags - Matrix Blog</title>\n");
-    html.push_str(&format!("    <link rel=\"canonical\" href=\"{}/tags\">\n", get_base_url()));
+    let base_url = get_base_url();
+    html.push_str(&format!(
+        "    <link rel=\"canonical\" href=\"{base_url}/tags\">\n",
+    ));
     html.push_str("    <meta property=\"og:type\" content=\"website\">\n");
-    html.push_str(&format!("    <meta property=\"og:url\" content=\"{}/tags\">\n", get_base_url()));
+    html.push_str(&format!(
+        "    <meta property=\"og:url\" content=\"{base_url}/tags\">\n",
+    ));
     html.push_str("    <meta property=\"og:title\" content=\"Tags - Matrix Blog\">\n");
     html.push_str("    <meta property=\"og:description\" content=\"All tags on Matrix Blog\">\n");
     html.push_str("    <meta name=\"twitter:card\" content=\"summary\">\n");
@@ -291,7 +360,9 @@ pub fn render_tags_index(tags: &[(String, usize)]) -> String {
     html.push_str("    <a href=\"#main-content\" class=\"skip-link\">Skip to content</a>\n");
     html.push_str("    \n");
     html.push_str("    <header class=\"site-header\">\n");
-    html.push_str("        <nav class=\"site-nav\" role=\"navigation\" aria-label=\"Main navigation\">\n");
+    html.push_str(
+        "        <nav class=\"site-nav\" role=\"navigation\" aria-label=\"Main navigation\">\n",
+    );
     html.push_str("            <a href=\"/\" class=\"site-logo\">Matrix</a>\n");
     html.push_str("            <ul class=\"nav-links\">\n");
     html.push_str("                <li><a href=\"/\">Home</a></li>\n");
@@ -309,8 +380,7 @@ pub fn render_tags_index(tags: &[(String, usize)]) -> String {
 
     for (tag, count) in tags {
         html.push_str(&format!(
-            "                    <a href=\"/tags/{}\" class=\"tag-item\">{} ({})</a>\n",
-            tag, tag, count
+            "                    <a href=\"/tags/{tag}\" class=\"tag-item\">{tag} ({count})</a>\n",
         ));
     }
 

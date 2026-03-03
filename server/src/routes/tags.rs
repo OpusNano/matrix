@@ -1,9 +1,4 @@
-use axum::{
-    extract::Path,
-    extract::State,
-    response::Html,
-    http::StatusCode,
-};
+use axum::{extract::Path, extract::State, http::StatusCode, response::Html};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -12,7 +7,7 @@ use crate::templates::render_tags_index;
 
 fn get_base_url() -> String {
     std::env::var("RUST_BASE_URL")
-        .map(|url| format!("https://{}", url))
+        .map(|url| format!("https://{url}"))
         .unwrap_or_else(|_| "https://example.com".to_string())
 }
 
@@ -57,19 +52,30 @@ fn render_tag_page(tag: &str, posts: &[Post]) -> String {
     html.push_str("<html lang=\"en\">\n");
     html.push_str("<head>\n");
     html.push_str("    <meta charset=\"UTF-8\">\n");
-    html.push_str("    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n");
-    html.push_str(&format!("    <meta name=\"description\" content=\"Posts tagged with {}\">\n", tag));
-    html.push_str(&format!("    <title>Tag: {} - Matrix Blog</title>\n", tag));
+    html.push_str(
+        "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n",
+    );
     html.push_str(&format!(
-        "    <link rel=\"canonical\" href=\"{}/tags/{}\">\n",
-        base_url, tag
+        "    <meta name=\"description\" content=\"Posts tagged with {tag}\">\n"
+    ));
+    html.push_str(&format!("    <title>Tag: {tag} - Matrix Blog</title>\n"));
+    html.push_str(&format!(
+        "    <link rel=\"canonical\" href=\"{base_url}/tags/{tag}\">\n",
     ));
     html.push_str("    <meta property=\"og:type\" content=\"website\">\n");
-    html.push_str(&format!("    <meta property=\"og:url\" content=\"{}/tags/{}\">\n", base_url, tag));
-    html.push_str(&format!("    <meta property=\"og:title\" content=\"Tag: {}\">\n", tag));
-    html.push_str(&format!("    <meta property=\"og:description\" content=\"Posts tagged with {}\">\n", tag));
+    html.push_str(&format!(
+        "    <meta property=\"og:url\" content=\"{base_url}/tags/{tag}\">\n"
+    ));
+    html.push_str(&format!(
+        "    <meta property=\"og:title\" content=\"Tag: {tag}\">\n"
+    ));
+    html.push_str(&format!(
+        "    <meta property=\"og:description\" content=\"Posts tagged with {tag}\">\n"
+    ));
     html.push_str("    <meta name=\"twitter:card\" content=\"summary\">\n");
-    html.push_str(&format!("    <meta name=\"twitter:title\" content=\"Tag: {}\">\n", tag));
+    html.push_str(&format!(
+        "    <meta name=\"twitter:title\" content=\"Tag: {tag}\">\n"
+    ));
     html.push_str("    <link rel=\"stylesheet\" href=\"/static/css/style.css\">\n");
     html.push_str("    <link rel=\"icon\" type=\"image/svg+xml\" href=\"/static/favicon.svg\">\n");
     html.push_str("    <script src=\"/static/js/main.js\" defer></script>\n");
@@ -78,7 +84,9 @@ fn render_tag_page(tag: &str, posts: &[Post]) -> String {
     html.push_str("    <a href=\"#main-content\" class=\"skip-link\">Skip to content</a>\n");
     html.push_str("    \n");
     html.push_str("    <header class=\"site-header\">\n");
-    html.push_str("        <nav class=\"site-nav\" role=\"navigation\" aria-label=\"Main navigation\">\n");
+    html.push_str(
+        "        <nav class=\"site-nav\" role=\"navigation\" aria-label=\"Main navigation\">\n",
+    );
     html.push_str("            <a href=\"/\" class=\"site-logo\">Matrix</a>\n");
     html.push_str("            <ul class=\"nav-links\">\n");
     html.push_str("                <li><a href=\"/\">Home</a></li>\n");
@@ -91,7 +99,9 @@ fn render_tag_page(tag: &str, posts: &[Post]) -> String {
     html.push_str("    <main id=\"main-content\" class=\"main-content\">\n");
     html.push_str("        <div class=\"container\">\n");
     html.push_str("            <section class=\"posts-section\">\n");
-    html.push_str(&format!("                <h1 class=\"page-title\">Tag: {}</h1>\n", tag));
+    html.push_str(&format!(
+        "                <h1 class=\"page-title\">Tag: {tag}</h1>\n"
+    ));
     html.push_str("                \n");
     html.push_str("                <ul class=\"post-list\">\n");
 
@@ -104,9 +114,9 @@ fn render_tag_page(tag: &str, posts: &[Post]) -> String {
             .iter()
             .map(|t| {
                 if t == tag {
-                    format!("<span class=\"tag\">{}</span>", t)
+                    format!("<span class=\"tag\">{t}</span>")
                 } else {
-                    format!("<a href=\"/tags/{}\" class=\"tag\">{}</a>", t, t)
+                    format!("<a href=\"/tags/{t}\" class=\"tag\">{t}</a>")
                 }
             })
             .collect();
@@ -115,7 +125,7 @@ fn render_tag_page(tag: &str, posts: &[Post]) -> String {
             .frontmatter
             .description
             .as_ref()
-            .map(|d| format!("<p class=\"post-description\">{}</p>", d))
+            .map(|d| format!("<p class=\"post-description\">{d}</p>"))
             .unwrap_or_default();
 
         html.push_str(&format!(
@@ -128,7 +138,11 @@ fn render_tag_page(tag: &str, posts: &[Post]) -> String {
                             {}\n\
                         </article>\n\
                     </li>\n",
-            post.slug, post.frontmatter.title, date, tags_html.join(" "), desc_html
+            post.slug,
+            post.frontmatter.title,
+            date,
+            tags_html.join(" "),
+            desc_html
         ));
     }
 

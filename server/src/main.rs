@@ -6,6 +6,6 @@ use tracing::info;
 async fn main() {
     let addr = SocketAddr::from(([0, 0, 0, 0], 8080));
     info!("Starting matrix-blog on {}", addr);
-    
+
     run(addr).await;
 }

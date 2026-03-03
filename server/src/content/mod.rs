@@ -1,6 +1,6 @@
+mod cache;
 mod loader;
 mod parser;
-mod cache;
 
 pub use loader::ContentLoader;
-pub use parser::{Post, Page, Frontmatter};
+pub use parser::{Page, Post};

@@ -245,8 +245,6 @@ static/
 └── js/
 ```
 
-**Note**: The `templates/` directory in the project root is unused. HTML is rendered via `server/src/templates/mod.rs` using manual string building.
-
 ---
 
 ## 4. Common Tasks

@@ -1,13 +1,16 @@
 use axum::{
-    routing::get,
     extract::{Path, State},
-    Router,
     response::IntoResponse,
+    routing::get,
+    Router,
 };
 use std::sync::Arc;
 
 use crate::content::ContentLoader;
-use crate::routes::{handle_index, handle_page, handle_post, handle_robots, handle_sitemap, handle_feed, handle_feed_xml, handle_tags_index, handle_tag};
+use crate::routes::{
+    handle_feed, handle_feed_xml, handle_index, handle_page, handle_post, handle_robots,
+    handle_sitemap, handle_tag, handle_tags_index,
+};
 
 pub fn create_app(content_loader: Arc<ContentLoader>) -> Router {
     Router::new()
@@ -24,16 +27,14 @@ pub fn create_app(content_loader: Arc<ContentLoader>) -> Router {
         .with_state(content_loader)
 }
 
-async fn handle_about(
-    State(loader): State<Arc<ContentLoader>>,
-) -> impl IntoResponse {
+async fn handle_about(State(loader): State<Arc<ContentLoader>>) -> impl IntoResponse {
     handle_page(Path("about".to_string()), State(loader)).await
 }
 
 async fn handle_static(Path(path): Path<String>) -> impl IntoResponse {
     let static_dir = std::path::Path::new("static");
     let file_path = static_dir.join(&path);
-    
+
     if file_path.exists() && file_path.is_file() {
         match std::fs::read(&file_path) {
             Ok(contents) => {
@@ -47,10 +48,9 @@ async fn handle_static(Path(path): Path<String>) -> impl IntoResponse {
                     _ => "application/octet-stream",
                 };
                 let mut response = axum::response::Response::new(contents.into());
-                response.headers_mut().insert(
-                    axum::http::header::CONTENT_TYPE,
-                    mime.parse().unwrap(),
-                );
+                response
+                    .headers_mut()
+                    .insert(axum::http::header::CONTENT_TYPE, mime.parse().unwrap());
                 response.headers_mut().insert(
                     axum::http::header::CACHE_CONTROL,
                     "public, max-age=31536000, immutable".parse().unwrap(),
@@ -60,6 +60,6 @@ async fn handle_static(Path(path): Path<String>) -> impl IntoResponse {
             Err(_) => return axum::http::StatusCode::NOT_FOUND.into_response(),
         }
     }
-    
+
     axum::http::StatusCode::NOT_FOUND.into_response()
 }

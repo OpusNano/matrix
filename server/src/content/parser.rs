@@ -4,9 +4,9 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 use thiserror::Error;
-use tracing::warn;
 
 #[derive(Error, Debug)]
+#[allow(dead_code)]
 pub enum ParseError {
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
@@ -58,16 +58,16 @@ pub fn parse_markdown_file(path: &Path) -> Result<Page, ParseError> {
 
 pub fn parse_markdown(content: &str, source_path: &Path) -> Result<Page, ParseError> {
     let (frontmatter, markdown) = extract_frontmatter(content)?;
-    
+
     let slug = source_path
         .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or("unknown")
         .to_string();
-    
+
     let markdown = strip_first_h1_from_markdown(&markdown);
     let html = render_markdown(&markdown);
-    
+
     Ok(Page {
         slug,
         frontmatter,
@@ -80,15 +80,15 @@ fn extract_frontmatter(content: &str) -> Result<(Frontmatter, String), ParseErro
         let fm = Frontmatter::default();
         return Ok((fm, content.to_string()));
     }
-    
+
     let rest = content.strip_prefix("---").unwrap();
     if let Some(end) = rest.find("---") {
         let yaml_str = &rest[..end];
         let markdown = rest[end + 3..].trim_start().to_string();
-        
-        let frontmatter: Frontmatter = serde_yaml::from_str(yaml_str)
-            .map_err(|e| ParseError::Frontmatter(e.to_string()))?;
-        
+
+        let frontmatter: Frontmatter =
+            serde_yaml::from_str(yaml_str).map_err(|e| ParseError::Frontmatter(e.to_string()))?;
+
         Ok((frontmatter, markdown))
     } else {
         let fm = Frontmatter::default();
@@ -97,14 +97,14 @@ fn extract_frontmatter(content: &str) -> Result<(Frontmatter, String), ParseErro
 }
 
 fn strip_first_h1_from_markdown(markdown: &str) -> String {
-    let mut lines: Vec<&str> = markdown.lines().collect();
-    
+    let lines: Vec<&str> = markdown.lines().collect();
+
     if lines.is_empty() {
         return markdown.to_string();
     }
-    
+
     let first_line = lines[0].trim();
-    
+
     if first_line.starts_with("# ") || first_line.starts_with("#\u{00A0}") {
         let mut result = String::new();
         for line in lines.iter().skip(1) {
@@ -113,7 +113,7 @@ fn strip_first_h1_from_markdown(markdown: &str) -> String {
         }
         return result.trim().to_string();
     }
-    
+
     markdown.to_string()
 }
 
@@ -123,18 +123,18 @@ fn render_markdown(markdown: &str) -> String {
     options.insert(Options::ENABLE_FOOTNOTES);
     options.insert(Options::ENABLE_STRIKETHROUGH);
     options.insert(Options::ENABLE_TASKLISTS);
-    
+
     let parser = Parser::new_ext(markdown, options);
     let mut html_output = String::new();
     html::push_html(&mut html_output, parser);
-    
+
     html_output
 }
 
 pub fn parse_post_file(path: &Path) -> Result<Post, ParseError> {
     let content = fs::read_to_string(path)?;
-    let mut page = parse_markdown(&content, path)?;
-    
+    let page = parse_markdown(&content, path)?;
+
     Ok(Post {
         slug: page.slug,
         frontmatter: page.frontmatter,
@@ -145,7 +145,7 @@ pub fn parse_post_file(path: &Path) -> Result<Post, ParseError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_frontmatter_parsing() {
         let content = r#"---
@@ -157,14 +157,14 @@ description: A test post
 ---
 
 # Hello"#;
-        
+
         let (fm, md) = extract_frontmatter(content).unwrap();
         assert_eq!(fm.title, "Hello World");
         assert!(!fm.draft);
         assert_eq!(fm.tags, vec!["rust", "blog"]);
         assert_eq!(md.trim(), "# Hello");
     }
-    
+
     #[test]
     fn test_no_frontmatter() {
         let content = "# Just Markdown";
@@ -173,7 +173,7 @@ description: A test post
         assert!(fm.draft);
         assert_eq!(md, "# Just Markdown");
     }
-    
+
     #[test]
     fn test_strip_first_h1() {
         let markdown = r#"# Welcome to Matrix Blog
@@ -187,7 +187,7 @@ More content."#;
         assert!(result.contains("This is a test."));
         assert!(result.contains("## Section"));
     }
-    
+
     #[test]
     fn test_strip_first_h1_preserves_content() {
         let markdown = r#"# Title

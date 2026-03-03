@@ -1,10 +1,4 @@
-use axum::{
-    extract::Path,
-    extract::State,
-    response::Html,
-    http::StatusCode,
-    response::IntoResponse,
-};
+use axum::{extract::Path, extract::State, http::StatusCode, response::Html};
 use std::sync::Arc;
 
 use crate::content::ContentLoader;
@@ -14,8 +8,10 @@ pub async fn handle_page(
     Path(slug): Path<String>,
     State(loader): State<Arc<ContentLoader>>,
 ) -> Result<axum::response::Html<String>, (StatusCode, &'static str)> {
-    let page = loader.get_page(&slug).await
+    let page = loader
+        .get_page(&slug)
+        .await
         .ok_or((StatusCode::NOT_FOUND, "Page not found"))?;
-    
+
     Ok(Html(render_page(&page)))
 }

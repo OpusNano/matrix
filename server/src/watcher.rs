@@ -2,7 +2,7 @@ use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 use std::path::PathBuf;
 use std::sync::mpsc;
 use std::time::Duration;
-use tracing::{info, error};
+use tracing::{error, info};
 
 pub struct FileWatcher {
     _watcher: RecommendedWatcher,
@@ -14,7 +14,7 @@ impl FileWatcher {
         F: Fn() + Send + 'static,
     {
         let (tx, rx) = mpsc::channel();
-        
+
         let mut watcher = RecommendedWatcher::new(
             move |res: Result<notify::Event, notify::Error>| {
                 if let Ok(event) = res {
@@ -22,14 +22,15 @@ impl FileWatcher {
                 }
             },
             Config::default().with_poll_interval(Duration::from_secs(2)),
-        ).unwrap();
-        
+        )
+        .unwrap();
+
         if let Err(e) = watcher.watch(&path, RecursiveMode::Recursive) {
             error!("Failed to watch path {:?}: {}", path, e);
         } else {
             info!("Watching path {:?} for changes", path);
         }
-        
+
         // Spawn a task to handle file changes
         std::thread::spawn(move || {
             for event in rx {
@@ -39,7 +40,7 @@ impl FileWatcher {
                 }
             }
         });
-        
+
         Self { _watcher: watcher }
     }
 }

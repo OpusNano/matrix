@@ -1,60 +1,50 @@
-use axum::{
-    extract::State,
-    response::IntoResponse,
-    http::StatusCode,
-};
+use axum::{extract::State, http::StatusCode, response::IntoResponse};
 use std::sync::Arc;
 
 use crate::content::ContentLoader;
 
 fn get_base_url() -> String {
     std::env::var("RUST_BASE_URL")
-        .map(|url| format!("https://{}", url))
+        .map(|url| format!("https://{url}"))
         .unwrap_or_else(|_| "https://example.com".to_string())
 }
 
 pub async fn handle_robots() -> impl IntoResponse {
     let base_url = get_base_url();
-    let content = format!(
-        "User-agent: *\nAllow: /\n\nSitemap: {}/sitemap.xml\n",
-        base_url
-    );
-    (
-        StatusCode::OK,
-        [("Content-Type", "text/plain")],
-        content,
-    )
+    let content = format!("User-agent: *\nAllow: /\n\nSitemap: {base_url}/sitemap.xml\n",);
+    (StatusCode::OK, [("Content-Type", "text/plain")], content)
 }
 
 pub async fn handle_sitemap(State(loader): State<Arc<ContentLoader>>) -> impl IntoResponse {
     let posts = loader.get_all_posts().await;
     let base_url = get_base_url();
 
-    let mut xml = String::from(r#"<?xml version="1.0" encoding="UTF-8"?>
+    let mut xml = String::from(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-"#);
+"#,
+    );
 
     xml.push_str(&format!(
         r#"  <url>
-    <loc>{}/</loc>
+    <loc>{base_url}/</loc>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
 "#,
-        base_url
     ));
 
     for post in &posts {
         let date = post.frontmatter.date.format("%Y-%m-%d").to_string();
         xml.push_str(&format!(
             r#"  <url>
-    <loc>{}/posts/{}</loc>
+    <loc>{base_url}/posts/{}</loc>
     <lastmod>{}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
 "#,
-            base_url, post.slug, date
+            post.slug, date
         ));
     }
 
@@ -62,23 +52,18 @@ pub async fn handle_sitemap(State(loader): State<Arc<ContentLoader>>) -> impl In
     for (slug, date) in pages {
         xml.push_str(&format!(
             r#"  <url>
-    <loc>{}/{}</loc>
-    <lastmod>{}</lastmod>
+    <loc>{base_url}/{slug}</loc>
+    <lastmod>{date}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
 "#,
-            base_url, slug, date
         ));
     }
 
     xml.push_str("</urlset>");
 
-    (
-        StatusCode::OK,
-        [("Content-Type", "application/xml")],
-        xml,
-    )
+    (StatusCode::OK, [("Content-Type", "application/xml")], xml)
 }
 
 pub async fn handle_feed(State(loader): State<Arc<ContentLoader>>) -> impl IntoResponse {
@@ -90,13 +75,20 @@ pub async fn handle_feed(State(loader): State<Arc<ContentLoader>>) -> impl IntoR
     xml.push_str("<rss version=\"2.0\" xmlns:atom=\"http://www.w3.org/2005/Atom\" xmlns:content=\"http://purl.org/rss/1.0/modules/content/\">\n");
     xml.push_str("  <channel>\n");
     xml.push_str("    <title>Matrix Blog</title>\n");
-    xml.push_str(&format!("    <link>{}</link>\n", base_url));
-    xml.push_str("    <description>A modern, sleek, dark-mode-native blog built with Rust</description>\n");
+    xml.push_str(&format!("    <link>{base_url}</link>\n"));
+    xml.push_str(
+        "    <description>A modern, sleek, dark-mode-native blog built with Rust</description>\n",
+    );
     xml.push_str("    <language>en</language>\n");
-    xml.push_str(&format!("    <atom:link href=\"{}/feed.xml\" rel=\"self\" type=\"application/rss+xml\"/>\n", base_url));
+    xml.push_str(&format!(
+        "    <atom:link href=\"{base_url}/feed.xml\" rel=\"self\" type=\"application/rss+xml\"/>\n"
+    ));
 
     if let Some(first) = posts.first() {
-        xml.push_str(&format!("    <lastBuildDate>{}</lastBuildDate>\n", first.frontmatter.date.to_rfc3339()));
+        xml.push_str(&format!(
+            "    <lastBuildDate>{}</lastBuildDate>\n",
+            first.frontmatter.date.to_rfc3339()
+        ));
     }
 
     for post in posts.iter().take(20) {
@@ -114,12 +106,7 @@ pub async fn handle_feed(State(loader): State<Arc<ContentLoader>>) -> impl IntoR
       <content:encoded><![CDATA[{}]]></content:encoded>
     </item>
 "#,
-            post.frontmatter.title,
-            url,
-            url,
-            pub_date,
-            desc,
-            post.html
+            post.frontmatter.title, url, url, pub_date, desc, post.html
         ));
     }
 
@@ -128,7 +115,7 @@ pub async fn handle_feed(State(loader): State<Arc<ContentLoader>>) -> impl IntoR
     (
         StatusCode::OK,
         [("Content-Type", "application/rss+xml")],
-        xml
+        xml,
     )
 }
 
@@ -141,9 +128,13 @@ pub async fn handle_feed_xml(State(loader): State<Arc<ContentLoader>>) -> impl I
     xml.push_str("<feed xmlns=\"http://www.w3.org/2005/Atom\">\n");
     xml.push_str("  <title>Matrix Blog</title>\n");
     xml.push_str("  <subtitle>A modern, sleek, dark-mode-native blog built with Rust</subtitle>\n");
-    xml.push_str(&format!("  <link href=\"{}/\" rel=\"alternate\"/>\n", base_url));
-    xml.push_str(&format!("  <link href=\"{}/feed.xml\" rel=\"self\"/>\n", base_url));
-    xml.push_str(&format!("  <id>{}/</id>\n", base_url));
+    xml.push_str(&format!(
+        "  <link href=\"{base_url}/\" rel=\"alternate\"/>\n"
+    ));
+    xml.push_str(&format!(
+        "  <link href=\"{base_url}/feed.xml\" rel=\"self\"/>\n"
+    ));
+    xml.push_str(&format!("  <id>{base_url}/</id>\n"));
     xml.push_str("  <updated>");
 
     if let Some(first) = posts.first() {

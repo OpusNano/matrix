@@ -368,6 +368,7 @@ docker compose -f docker-compose.prod.yml up -d
 | `SSH_KEY_PASSPHRASE` | Passphrase for the SSH key |
 | `GHCR_USERNAME` | GitHub username for GHCR login |
 | `GHCR_TOKEN` | GitHub token with packages:write scope |
+| `DOMAIN` | Production domain (e.g., example.com) - sets RUST_BASE_URL for canonical URLs |
 
 ### Adding a Second Site
 

@@ -18,6 +18,8 @@ services:
     image: caddy:2-alpine
     container_name: caddy-proxy
     restart: unless-stopped
+    environment:
+      - DOMAIN=${DOMAIN}
     ports:
       - "80:80"
       - "443:443"

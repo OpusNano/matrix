@@ -76,15 +76,44 @@ pub fn parse_markdown(content: &str, source_path: &Path) -> Result<Page, ParseEr
 }
 
 fn extract_frontmatter(content: &str) -> Result<(Frontmatter, String), ParseError> {
+    let content = content.trim_start();
+
     if !content.starts_with("---") {
         let fm = Frontmatter::default();
         return Ok((fm, content.to_string()));
     }
 
-    let rest = content.strip_prefix("---").unwrap();
-    if let Some(end) = rest.find("---") {
-        let yaml_str = &rest[..end];
-        let markdown = rest[end + 3..].trim_start().to_string();
+    let after_first_dash = content.strip_prefix("---").unwrap();
+    let mut line_start = 0;
+    let chars: Vec<char> = after_first_dash.chars().collect();
+
+    let mut found_end = false;
+    let mut end_pos = 0;
+
+    for i in 0..chars.len() {
+        if i + 2 < chars.len() {
+            if chars[i] == '\n' || chars[i] == '\r' {
+                line_start = i + 1;
+                if chars[i] == '\r' && i + 1 < chars.len() && chars[i + 1] == '\n' {
+                    line_start = i + 2;
+                }
+            }
+            if chars[i] == '-'
+                && chars[i + 1] == '-'
+                && chars[i + 2] == '-'
+                && line_start > 0
+                && (line_start == i || chars[line_start] == '\n' || chars[line_start] == '\r')
+            {
+                end_pos = i;
+                found_end = true;
+                break;
+            }
+        }
+    }
+
+    if found_end {
+        let yaml_str = after_first_dash[..end_pos].trim();
+        let markdown = after_first_dash[end_pos + 3..].trim_start().to_string();
 
         let frontmatter: Frontmatter =
             serde_yaml::from_str(yaml_str).map_err(|e| ParseError::Frontmatter(e.to_string()))?;
@@ -97,7 +126,8 @@ fn extract_frontmatter(content: &str) -> Result<(Frontmatter, String), ParseErro
 }
 
 fn strip_first_h1_from_markdown(markdown: &str) -> String {
-    let lines: Vec<&str> = markdown.lines().collect();
+    let trimmed = markdown.trim_start();
+    let lines: Vec<&str> = trimmed.lines().collect();
 
     if lines.is_empty() {
         return markdown.to_string();
@@ -111,7 +141,7 @@ fn strip_first_h1_from_markdown(markdown: &str) -> String {
             result.push_str(line);
             result.push('\n');
         }
-        return result.trim().to_string();
+        return result.trim_start().to_string();
     }
 
     markdown.to_string()
@@ -196,5 +226,65 @@ Content after."#;
         let result = strip_first_h1_from_markdown(markdown);
         assert!(result.contains("Content after"));
         assert!(!result.contains("# Title"));
+    }
+
+    #[test]
+    fn test_frontmatter_with_leading_whitespace() {
+        let content = r#"  
+---
+
+title: Whitespace Test
+date: 2024-01-01T00:00:00Z
+tags: []
+draft: false
+---
+
+Content"#;
+        let (fm, _md) = extract_frontmatter(content).unwrap();
+        assert_eq!(fm.title, "Whitespace Test");
+        assert!(!fm.draft);
+    }
+
+    #[test]
+    fn test_frontmatter_with_dashes_in_content() {
+        let content = r#"---
+title: Test
+date: 2024-01-01T00:00:00Z
+tags: []
+draft: false
+---
+
+# Heading
+
+Some text with --- dashes in it.
+
+---
+More content after separator---
+"#;
+        let (fm, markdown) = extract_frontmatter(content).unwrap();
+        assert_eq!(fm.title, "Test");
+        assert!(markdown.contains("dashes in it"));
+    }
+
+    #[test]
+    fn test_strip_first_h1_with_leading_blank_lines() {
+        let markdown = "
+
+# Title
+
+Content.";
+        let result = strip_first_h1_from_markdown(markdown);
+        assert!(result.contains("Content"));
+        assert!(!result.contains("# Title"));
+    }
+
+    #[test]
+    fn test_strip_first_h1_no_h1() {
+        let markdown = r#"## Section
+
+Some content."#;
+        let result = strip_first_h1_from_markdown(markdown);
+        assert!(result.contains("## Section"));
+        assert!(result.contains("Some content"));
     }
 }

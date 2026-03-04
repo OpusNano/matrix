@@ -2,9 +2,11 @@ use crate::content::cache::ContentCache;
 use crate::content::parser::{Page, Post};
 use crate::watcher::FileWatcher;
 use parking_lot::RwLock;
+use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::Arc;
 use thiserror::Error;
+use tokio::sync::Mutex;
 use tracing::{error, info, warn};
 
 #[derive(Error, Debug)]
@@ -14,11 +16,14 @@ pub enum ContentError {
     Io(#[from] std::io::Error),
     #[error("Parse error: {0}")]
     Parse(String),
+    #[error("Duplicate slug '{0}'")]
+    DuplicateSlug(String),
 }
 
 pub struct ContentLoader {
     cache: Arc<RwLock<ContentCache>>,
     content_path: PathBuf,
+    reload_lock: Arc<Mutex<()>>,
     _watcher: FileWatcher,
 }
 
@@ -26,7 +31,7 @@ impl ContentLoader {
     pub fn new(content_path: PathBuf) -> Arc<Self> {
         let cache = Arc::new(RwLock::new(ContentCache::default()));
         let cache_clone = Arc::clone(&cache);
-        let _content_path_clone = content_path.clone();
+        let reload_lock = Arc::new(Mutex::new(()));
 
         let _watcher = FileWatcher::new(content_path.clone(), move || {
             info!("Content changed, invalidating cache");
@@ -37,6 +42,7 @@ impl ContentLoader {
         let loader = Arc::new(Self {
             cache: Arc::clone(&cache),
             content_path,
+            reload_lock,
             _watcher,
         });
 
@@ -51,7 +57,36 @@ impl ContentLoader {
         loader
     }
 
+    fn check_duplicate_slugs(posts: &[Post], pages: &[Page]) -> Result<(), ContentError> {
+        let mut seen: HashSet<String> = HashSet::new();
+        let mut duplicate_slug: Option<String> = None;
+
+        for post in posts {
+            if !seen.insert(post.slug.clone()) {
+                duplicate_slug = Some(post.slug.clone());
+                break;
+            }
+        }
+
+        if duplicate_slug.is_none() {
+            for page in pages {
+                if !seen.insert(page.slug.clone()) {
+                    duplicate_slug = Some(page.slug.clone());
+                    break;
+                }
+            }
+        }
+
+        if let Some(slug) = duplicate_slug {
+            return Err(ContentError::DuplicateSlug(slug));
+        }
+
+        Ok(())
+    }
+
     async fn reload(&self) -> Result<(), ContentError> {
+        let _lock = self.reload_lock.lock().await;
+
         info!("Reloading content from disk");
 
         let posts_dir = self.content_path.join("posts");
@@ -90,6 +125,12 @@ impl ContentLoader {
                     Err(e) => warn!("Failed to parse {:?}: {}", entry.path(), e),
                 }
             }
+        }
+
+        // Check for duplicate slugs
+        if let Err(e) = Self::check_duplicate_slugs(&posts, &pages) {
+            error!("Duplicate slug detected: {}", e);
+            return Err(e);
         }
 
         // Sort posts by date (newest first)
@@ -138,5 +179,73 @@ impl ContentLoader {
             .iter()
             .find(|p| p.slug == slug)
             .cloned()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::content::parser::Frontmatter;
+    use chrono::Utc;
+
+    fn make_post(slug: &str) -> Post {
+        Post {
+            slug: slug.to_string(),
+            frontmatter: Frontmatter {
+                title: slug.to_string(),
+                date: Utc::now(),
+                tags: vec![],
+                draft: false,
+                description: None,
+            },
+            html: String::new(),
+        }
+    }
+
+    fn make_page(slug: &str) -> Page {
+        Page {
+            slug: slug.to_string(),
+            frontmatter: Frontmatter {
+                title: slug.to_string(),
+                date: Utc::now(),
+                tags: vec![],
+                draft: false,
+                description: None,
+            },
+            html: String::new(),
+        }
+    }
+
+    #[test]
+    fn test_check_duplicate_slugs_no_duplicates() {
+        let posts = vec![make_post("post1"), make_post("post2")];
+        let pages = vec![make_page("page1")];
+        let result = ContentLoader::check_duplicate_slugs(&posts, &pages);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_check_duplicate_slugs_post_duplicate() {
+        let posts = vec![make_post("same-slug"), make_post("same-slug")];
+        let pages = vec![];
+        let result = ContentLoader::check_duplicate_slugs(&posts, &pages);
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), ContentError::DuplicateSlug(s) if s == "same-slug"));
+    }
+
+    #[test]
+    fn test_check_duplicate_slugs_page_duplicate() {
+        let posts = vec![make_post("post1")];
+        let pages = vec![make_page("same-slug"), make_page("same-slug")];
+        let result = ContentLoader::check_duplicate_slugs(&posts, &pages);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_check_duplicate_slugs_post_page_collision() {
+        let posts = vec![make_post("collision")];
+        let pages = vec![make_page("collision")];
+        let result = ContentLoader::check_duplicate_slugs(&posts, &pages);
+        assert!(result.is_err());
     }
 }
